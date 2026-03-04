@@ -1,9 +1,9 @@
-###**StudyPlanner – Frontend**
+###**StudyPlanner – Frontend**###
 
 StudyPlanner is a web application that helps students organise their study workload by creating study plans, managing tasks, and generating weekly schedules. The system allows users to break large academic goals into manageable tasks and monitor their progress over time.
 
 
-###**Features**
+###**Features**###
 
 The application provides the following core functionality:
 
@@ -33,36 +33,39 @@ The application provides the following core functionality:
 	•	Overview of productivity for the week
 
 
-###**Technology Stack**
+###**Tech Stack**###
 
-This project uses the following technologies:
-	•	React
-	•	TypeScript
-	•	Vite
-	•	Tailwind CSS
-	•	shadcn/ui
-	•	Vitest (testing)
+**Frontend:**
+- React 18 with TypeScript
+- Vite (build tool)
+- Tailwind CSS + shadcn-ui (component library)
+- React Router (client-side routing)
+- React Hook Form (form management)
+- TanStack React Query (server-state caching)
+
+**Backend (To Be Connected):**
 
 
-###**Project Structure**
+###**Project Structure**###
+
 src/
- ├── components/   Reusable UI components
- ├── contexts/     React context providers
- ├── hooks/        Custom React hooks
- ├── lib/          Utility functions
- ├── pages/        Application pages
- ├── services/     API service layer
- ├── types/        TypeScript interfaces
- ├── test/         Unit tests
+ ├── components/   # Reusable UI components
+ ├── contexts/     # React context providers
+ ├── hooks/        # Custom React hooks
+ ├── lib/          # Utility functions
+ ├── pages/        # Application pages
+ ├── services/     # API service layer
+ ├── types/        # TypeScript interfaces
+ ├── test/         # Unit tests
  ├── App.tsx
- └── main.tsx
+ └── main.tsx      # App entry point
 
  The API communication is centralised in:
  src/services/api.ts
  **This file handles all requests to the backend including authentication, study plans, tasks, schedules, dashboard data, and summaries.
 
 
-###**Running the Project**
+###**Running the Project**###
 
 Install dependencies:
 npm install
@@ -77,7 +80,13 @@ Run tests:
 npm test
 
 
-###**Testing**
+The app is fully responsive and mobile-first:
+- **Mobile** (`<768px`): Hamburger menu opens a slide-over sidebar
+- **Tablet** (`768px–1024px`): Compact sidebar visible
+- **Desktop** (`>1024px`): Full sidebar navigation
+
+
+###**Testing**###
 
 The project includes automated tests using Vitest.
 
@@ -91,10 +100,13 @@ Tests cover key features such as:
 	•	summary generation
 
 
-###**Contributors**
+###**Contributors**###
 
 Group BS
 University of Glasgow
 	•	Jinyu Fu - Frontend
 	•	Xinyu Liu - Documentations
 	•	Yuxin Zhang - Backend
+
+
+**Last Updated:** 4th March 2026
