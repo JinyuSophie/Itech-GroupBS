@@ -1,3 +1,7 @@
 from django.contrib import admin
+from .models import StudyPlan, Task, ScheduleEntry, ProgressLog
 
-# Register your models here.
+admin.site.register(StudyPlan)
+admin.site.register(Task)
+admin.site.register(ScheduleEntry)
+admin.site.register(ProgressLog)
