@@ -119,12 +119,10 @@ export interface RegisterRequest {
 
 /**
  * Response body returned by both login and register endpoints.
- * The `token` is a Django REST Framework Token used for subsequent
- * authenticated requests via the "Authorization: Token <token>" header.
+ * This project uses Django session authentication via cookies.
  */
 export interface AuthResponse {
   user: User;
-  token: string;
 }
 
 // ─── Composite / Aggregated Types (used by Dashboard & Summary pages) ──────────

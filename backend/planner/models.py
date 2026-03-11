@@ -13,9 +13,18 @@ class StudyPlan(models.Model):
 
 
 class Task(models.Model):
+    STATUS_NOT_STARTED = "not_started"
+    STATUS_IN_PROGRESS = "in_progress"
+    STATUS_COMPLETED = "completed"
+    STATUS_CHOICES = [
+        (STATUS_NOT_STARTED, "Not Started"),
+        (STATUS_IN_PROGRESS, "In Progress"),
+        (STATUS_COMPLETED, "Completed"),
+    ]
+
     plan = models.ForeignKey(StudyPlan, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
-    status = models.CharField(max_length=50)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_NOT_STARTED)
     deadline_date = models.DateField()
     estimated_effort_hours = models.FloatField()
 

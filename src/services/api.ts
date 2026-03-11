@@ -1,8 +1,10 @@
 const BASE_URL = "http://127.0.0.1:8000/api";
 
 function getHeaders(): HeadersInit {
+  const token = localStorage.getItem("auth_token");
   return {
     "Content-Type": "application/json",
+    ...(token ? { Authorization: `Token ${token}` } : {}),
   };
 }
 
@@ -25,8 +27,32 @@ export const healthApi = {
   get: () => request<{ status: string }>("/health/"),
 };
 
+export const authApi = {
+  register: (data: { email: string; password: string; confirm_password: string }) =>
+    request<{ user: { user_id: number; email: string; created_at: string } }>("/auth/register/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  login: (data: { email: string; password: string }) =>
+    request<{ user: { user_id: number; email: string; created_at: string } }>("/auth/login/", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  logout: () =>
+    request<{ logged_out: boolean }>("/auth/logout/", {
+      method: "POST",
+    }),
+
+  session: () => request<{ user: { user_id: number; email: string; created_at: string } }>("/auth/session/"),
+};
+
 export const plansApi = {
-  list: () => request<{ plans: any[] }>("/plans/"),
+  list: async () => {
+    const payload = await request<{ plans: any[] } | any[]>("/plans/");
+    return Array.isArray(payload) ? payload : payload.plans;
+  },
 
   create: (data: { title: string; start_date: string; end_date: string }) =>
     request("/plans/", {
@@ -35,6 +61,17 @@ export const plansApi = {
     }),
 
   get: (id: number) => request(`/plans/${id}/`),
+
+  update: (id: number, data: { title?: string; start_date?: string; end_date?: string }) =>
+    request(`/plans/${id}/`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: number) =>
+    request(`/plans/${id}/`, {
+      method: "DELETE",
+    }),
 
   getTasks: (id: number) => request(`/plans/${id}/tasks/`),
 };
@@ -54,6 +91,12 @@ export const tasksApi = {
 
   get: (id: number) => request(`/tasks/${id}/`),
 
+  update: (id: number, data: { title?: string; status?: string; due_date?: string }) =>
+    request(`/tasks/${id}/`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
   updateStatus: (id: number, data: { status: string }) =>
     request(`/tasks/${id}/status/`, {
       method: "POST",
@@ -64,4 +107,16 @@ export const tasksApi = {
     request(`/tasks/${id}/`, {
       method: "DELETE",
     }),
+};
+
+export const dashboardApi = {
+  get: () => request("/dashboard"),
+};
+
+export const scheduleApi = {
+  weekly: () => request("/schedule/weekly"),
+};
+
+export const summaryApi = {
+  weekly: () => request("/summary/weekly"),
 };
