@@ -1,19 +1,11 @@
 /**
  * WeeklySummaryPage.tsx — Weekly productivity summary (Wireframe 6).
  *
- * Displays aggregated statistics for the current week:
- * - Tasks Completed count
- * - Total Effort Hours this week
- * - Remaining Workload Hours across all plans
- * - Per-plan progress bars
- *
- * BACKEND INTEGRATION:
- *   Replace mockWeeklySummary with:
- *     const { data } = useQuery({ queryKey: ["summary"], queryFn: summaryApi.weekly });
- *
- * MOBILE:
- *   - Stat cards stack vertically on small screens (grid-cols-1 → sm:3).
- *   - Full-width progress bars adapt to any screen width.
+ * ACCESSIBILITY (WCAG):
+ *   - 1.4.3 Contrast: Progress percentages shown as text alongside bars.
+ *   - Stat cards use icon + text (not colour alone).
+ *   - Section uses aria-label for screen reader landmarks.
+ *   - Progress bars have aria-label for screen readers.
  */
 
 import AppLayout from "@/components/AppLayout";
@@ -23,12 +15,11 @@ import { mockWeeklySummary } from "@/services/mockData";
 import { CheckCircle2, Clock, BarChart3, TrendingUp } from "lucide-react";
 
 const WeeklySummaryPage = () => {
-  // TODO: Replace with React Query call to summaryApi.weekly()
   const data = mockWeeklySummary;
 
   return (
     <AppLayout>
-      <div className="animate-fade-in space-y-6 max-w-3xl">
+      <div className="animate-fade-in space-y-6 max-w-3xl mx-auto">
         {/* ── Page Header ── */}
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">Weekly Summary</h1>
@@ -38,53 +29,54 @@ const WeeklySummaryPage = () => {
         </div>
 
         {/* ── Stat Cards ── */}
-        {/* Three key metrics displayed in a responsive grid */}
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-          {/* Tasks Completed */}
-          <Card>
-            <CardContent className="pt-5 pb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
-                <CheckCircle2 className="h-5 w-5 text-success" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{data.tasks_completed}</p>
-                <p className="text-xs text-muted-foreground">Tasks Completed</p>
-              </div>
-            </CardContent>
-          </Card>
+        <section aria-label="Weekly statistics">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+            {/* Tasks Completed */}
+            <Card>
+              <CardContent className="pt-5 pb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
+                  <CheckCircle2 className="h-5 w-5 text-success" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{data.tasks_completed}</p>
+                  <p className="text-xs text-muted-foreground">Tasks Completed</p>
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* Total Effort This Week */}
-          <Card>
-            <CardContent className="pt-5 pb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10">
-                <Clock className="h-5 w-5 text-info" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{data.total_effort_hours}h</p>
-                <p className="text-xs text-muted-foreground">Effort This Week</p>
-              </div>
-            </CardContent>
-          </Card>
+            {/* Total Effort */}
+            <Card>
+              <CardContent className="pt-5 pb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10">
+                  <Clock className="h-5 w-5 text-info" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{data.total_effort_hours}h</p>
+                  <p className="text-xs text-muted-foreground">Effort This Week</p>
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* Remaining Workload */}
-          <Card>
-            <CardContent className="pt-5 pb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
-                <TrendingUp className="h-5 w-5 text-warning" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{data.remaining_workload_hours}h</p>
-                <p className="text-xs text-muted-foreground">Remaining Workload</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            {/* Remaining Workload */}
+            <Card>
+              <CardContent className="pt-5 pb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
+                  <TrendingUp className="h-5 w-5 text-warning" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{data.remaining_workload_hours}h</p>
+                  <p className="text-xs text-muted-foreground">Remaining Workload</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
 
-        {/* ── Plans Progress Section ── */}
-        {/* Shows a progress bar for each study plan's completion percentage */}
-        <section>
+
+        {/* ── Plans Progress ── */}
+        <section aria-label="Plans progress">
           <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-accent" />
+            <BarChart3 className="h-5 w-5 text-accent" aria-hidden="true" />
             Plans Progress
           </h2>
           <Card>
@@ -96,7 +88,7 @@ const WeeklySummaryPage = () => {
                     <span className="text-muted-foreground">{progress_percent}%</span>
                   </div>
                   {/* Progress bar — value from backend aggregation */}
-                  <Progress value={progress_percent} className="h-2" />
+                  <Progress value={progress_percent} className="h-2"  aria-label={`${plan.title}: ${progress_percent}% complete`} />
                 </div>
               ))}
             </CardContent>

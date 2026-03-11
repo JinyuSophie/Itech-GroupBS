@@ -1,20 +1,13 @@
 /**
- * PlansListPage.tsx — List of all study plans (Wireframe 3).
- *
- * Features:
- * - Displays all plans as cards with title, date range, task count, and progress bar.
- * - "Create Plan" button opens a dialog to add a new plan.
- * - Each card is clickable, navigating to the Plan Detail page.
- * - Delete button removes a plan from the local state.
- *
- * BACKEND INTEGRATION:
- *   Replace local state with React Query:
- *     const { data: plans } = useQuery({ queryKey: ["plans"], queryFn: plansApi.list });
- *   Replace handleCreate with: useMutation({ mutationFn: plansApi.create, ... });
- *   Replace handleDelete with: useMutation({ mutationFn: plansApi.delete, ... });
- *
- * MOBILE: Cards stack in a single column on small screens.
- *         Dialog is full-width on mobile with proper touch targets.
+ * PlansListPage.tsx — List of all study plans.
+ * 
+ * ACCESSIBILITY (WCAG):
+ *   - 1.4.3 Contrast: Progress bars use semantic tokens. Progress percentage
+ *     is shown as text alongside the bar (not colour alone).
+ *   - 2.1.1 Keyboard: Cards are clickable via onClick + cursor-pointer.
+ *     Delete button has aria-label describing the action.
+ *   - 4.1.3 Status Messages: Delete action triggers toast via Sonner aria-live.
+ *   - Cards use role="link" implicitly through onClick + keyboard handling.
  */
 
 import { useState } from "react";
@@ -22,30 +15,23 @@ import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { mockPlans, mockTasks } from "@/services/mockData";
 import type { StudyPlan } from "@/types/models";
 import { Plus, Trash2, Calendar } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 const PlansListPage = () => {
   const navigate = useNavigate();
 
   // ── State ────────────────────────────────────────────────────────────────────
-  // Local copy of plans for create/delete operations.
+  // Local copy of plans for delete operations.
   // TODO: Replace with server state via React Query when backend is ready.
   const [plans, setPlans] = useState<StudyPlan[]>(mockPlans);
-  const [open, setOpen] = useState(false);       // Controls the create dialog visibility
-  const [newTitle, setNewTitle] = useState("");   // New plan title input
-  const [newStart, setNewStart] = useState("");   // New plan start date input
-  const [newEnd, setNewEnd] = useState("");       // New plan end date input
 
   /**
    * getProgress — Calculates completion percentage for a plan.
-   * Counts completed tasks vs total tasks for the given plan.
+   * Counts completed tasks vs total tasks belonging to the plan.
    *
    * @param planId — The plan_id to calculate progress for.
    * @returns Integer percentage (0–100).
@@ -54,30 +40,6 @@ const PlansListPage = () => {
     const tasks = mockTasks.filter((t) => t.plan === planId);
     if (!tasks.length) return 0;
     return Math.round((tasks.filter((t) => t.status === "completed").length / tasks.length) * 100);
-  };
-
-  /**
-   * handleCreate — Creates a new plan from the dialog form inputs.
-   * Validates that all fields are filled, then adds the plan to local state.
-   *
-   * TODO: Replace with plansApi.create({ title, start_date, end_date })
-   */
-  const handleCreate = () => {
-    if (!newTitle || !newStart || !newEnd) return;
-    const newPlan: StudyPlan = {
-      plan_id: Date.now(), // Temporary ID — backend will assign a real one
-      user: 1,             // FK to User — backend infers from auth token
-      title: newTitle,
-      start_date: newStart,
-      end_date: newEnd,
-    };
-    setPlans([...plans, newPlan]);
-    setOpen(false);
-    // Reset form fields
-    setNewTitle("");
-    setNewStart("");
-    setNewEnd("");
-    toast.success("Study plan created!");
   };
 
   /**
@@ -101,37 +63,10 @@ const PlansListPage = () => {
             <h1 className="font-display text-2xl font-bold text-foreground">Study Plans</h1>
             <p className="text-sm text-muted-foreground">Manage your academic study plans</p>
           </div>
-
-          {/* Create Plan Dialog */}
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button><Plus className="mr-1.5 h-4 w-4" /> Create Plan</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create Study Plan</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 pt-2">
-                {/* Plan title input */}
-                <div className="space-y-2">
-                  <Label>Plan Title</Label>
-                  <Input placeholder="e.g. Internet Technology" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
-                </div>
-                {/* Date range inputs — side by side on wider screens */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Start Date</Label>
-                    <Input type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>End Date</Label>
-                    <Input type="date" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
-                  </div>
-                </div>
-                <Button onClick={handleCreate} className="w-full">Create Plan</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {/* Navigate to the dedicated Create Plan page (/plans/new) per wireframe sitemap */}
+          <Button onClick={() => navigate("/plans/new")} className="gap-1.5">
+            <Plus className="h-4 w-4" /> Create Plan
+          </Button>
         </div>
 
         {/* ── Plans Grid ── */}
@@ -143,8 +78,18 @@ const PlansListPage = () => {
             return (
               <Card
                 key={plan.plan_id}
-                className="cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5"
+                className="cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => navigate(`/plans/${plan.plan_id}`)}
+                tabIndex={0}
+                role="link"
+                aria-label={`View plan: ${plan.title}`}
+                onKeyDown={(e) => {
+                  // Allow keyboard activation with Enter or Space (2.1.1 Keyboard)
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate(`/plans/${plan.plan_id}`);
+                  }
+                }}
               >
                 <CardHeader className="flex flex-row items-start justify-between pb-2">
                   <CardTitle className="text-base font-semibold">{plan.title}</CardTitle>
@@ -154,6 +99,7 @@ const PlansListPage = () => {
                     variant="ghost"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive"
                     onClick={(e) => handleDelete(plan.plan_id, e)}
+                    aria-label={`Delete plan: ${plan.title}`}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -161,18 +107,18 @@ const PlansListPage = () => {
                 <CardContent className="space-y-3">
                   {/* Date range display */}
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5" />
+                    <Calendar className="h-3.5 w-3.5" aria-hidden="true"/>
                     {plan.start_date} → {plan.end_date}
                   </div>
                   {/* Task count */}
                   <div className="text-xs text-muted-foreground">{taskCount} task{taskCount !== 1 ? "s" : ""}</div>
-                  {/* Progress bar */}
+                  {/* Progress bar — percentage shown as text (not colour alone, 1.4.3) */}
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-muted-foreground">Progress</span>
                       <span className="font-medium text-foreground">{progress}%</span>
                     </div>
-                    <Progress value={progress} className="h-1.5" />
+                    <Progress value={progress} className="h-1.5" aria-label={`${progress}% complete`} />
                   </div>
                 </CardContent>
               </Card>

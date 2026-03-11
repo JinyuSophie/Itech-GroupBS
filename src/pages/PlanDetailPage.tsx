@@ -1,23 +1,17 @@
 /**
- * PlanDetailPage.tsx — Detail view for a single study plan (Wireframe 3b).
+ * PlanDetailPage.tsx — Detail view for a single study plan (Wireframe 3).
  *
- * Features:
- * - Editable plan title (inline text input).
- * - Displays the plan's date range.
- * - Table of tasks belonging to this plan, each with status badge and view button.
- * - "Create Task" dialog to add new tasks to this plan.
- *
+ * ACCESSIBILITY (WCAG):
+ *   - 1.4.3 Contrast: Status badges use both colour AND text labels (not colour alone).
+ *   - 2.1.1 Keyboard: All buttons and links are keyboard focusable.
+ *     Table rows have View buttons for keyboard navigation to task detail.
+ *   - 4.1.3 Status Messages: Toast notifications use Sonner's aria-live region.
+ *   - Tables use <th> with scope for screen reader column association.
+ * 
  * BACKEND INTEGRATION:
  *   Replace local state with React Query:
  *     const { data: plan } = useQuery({ queryKey: ["plan", planId], queryFn: () => plansApi.get(planId) });
- *     const { data: tasks } = useQuery({ queryKey: ["tasks", planId], ... });
- *   Replace handleSave with: useMutation({ mutationFn: (title) => plansApi.update(planId, { title }) });
- *   Replace handleCreateTask with: useMutation({ mutationFn: tasksApi.create });
- *
- * MOBILE:
- *   - Table uses overflow-x-auto for horizontal scrolling on small screens.
- *   - "Effort" and "Status" columns are hidden on very small screens.
- *   - Buttons have proper touch-target sizes.
+ *     const { data: tasks } = useQuery({ queryKey: ["tasks", planId], queryFn: () => tasksApi.listByPlan(planId) });
  */
 
 import { useState } from "react";
@@ -25,17 +19,15 @@ import { useParams, useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { mockPlans, mockTasks } from "@/services/mockData";
 import type { Task } from "@/types/models";
-import { ArrowLeft, Plus, Save, ChevronRight } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ArrowLeft, Plus, Save, ChevronRight, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 // ─── Status Badge Config ───────────────────────────────────────────────────────
-// Reusable mapping from TaskStatus to human-readable label + CSS class.
+// Maps TaskStatus → human-readable label + CSS class.
+// Uses both colour AND text to convey status (1.4.3 Contrast — not colour alone).
 
 const statusConfig = {
   not_started: { label: "Not Started", className: "bg-muted text-muted-foreground" },
@@ -45,62 +37,30 @@ const statusConfig = {
 
 const PlanDetailPage = () => {
   // ── Route Params ─────────────────────────────────────────────────────────────
-  // planId comes from the URL: /plans/:planId
   const { planId } = useParams<{ planId: string }>();
   const navigate = useNavigate();
 
-  // Find the plan from mock data by its ID
+  // Find the plan from mock data by its numeric ID
   const plan = mockPlans.find((p) => p.plan_id === Number(planId));
 
   // ── Local State ──────────────────────────────────────────────────────────────
-  // Tasks are filtered by plan FK, stored locally for add operations.
-  const [tasks, setTasks] = useState<Task[]>(mockTasks.filter((t) => t.plan === Number(planId)));
-  const [title, setTitle] = useState(plan?.title || "");   // Editable plan title
-  const [open, setOpen] = useState(false);                 // Create task dialog toggle
-  const [taskTitle, setTaskTitle] = useState("");           // New task title
-  const [taskDue, setTaskDue] = useState("");               // New task deadline
-  const [taskEffort, setTaskEffort] = useState("");         // New task estimated effort
+  // Tasks are filtered by plan FK, stored locally for add operations.// Tasks filtered by the plan FK — stored locally for display.  const [tasks, setTasks] = useState<Task[]>(mockTasks.filter((t) => t.plan === Number(planId)));
 
   // ── Not Found State ──────────────────────────────────────────────────────────
   if (!plan) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center py-20 text-muted-foreground">Plan not found.</div>
+        <div className="flex items-center justify-center py-20 text-muted-foreground" role="status">Plan not found.</div>
       </AppLayout>
     );
   }
 
   /**
-   * handleSave — Persists the edited plan title.
-   * TODO: Replace with plansApi.update(plan.plan_id, { title })
+   * handleSave — Persists any pending changes.
+   * TODO: Replace with plansApi.update(plan.plan_id, { ... })
    */
   const handleSave = () => {
     toast.success("Plan saved!");
-  };
-
-  /**
-   * handleCreateTask — Creates a new task under this plan.
-   * Validates all fields, appends to local state, and resets the form.
-   *
-   * TODO: Replace with tasksApi.create({ plan: plan.plan_id, title, due_date, estimated_effort_hours })
-   */
-  const handleCreateTask = () => {
-    if (!taskTitle || !taskDue || !taskEffort) return;
-    const newTask: Task = {
-      task_id: Date.now(), // Temporary ID — backend assigns a real one
-      plan: plan.plan_id,  // FK link to the parent plan
-      title: taskTitle,
-      status: "not_started", // New tasks always start as "not_started"
-      due_date: taskDue,
-      estimated_effort_hours: Number(taskEffort),
-    };
-    setTasks([...tasks, newTask]);
-    setOpen(false);
-    // Reset form
-    setTaskTitle("");
-    setTaskDue("");
-    setTaskEffort("");
-    toast.success("Task created! Weekly schedule updated.");
   };
 
   return (
@@ -108,74 +68,61 @@ const PlanDetailPage = () => {
       <div className="animate-fade-in space-y-6">
         {/* ── Top Bar: Back + Save Buttons ── */}
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <Button variant="ghost" onClick={() => navigate("/plans")} className="gap-1.5">
+          <Button variant="ghost" onClick={() => navigate("/plans")} className="gap-1.5" aria-label="Go back to plans list">
             <ArrowLeft className="h-4 w-4" /> Back to Plans
           </Button>
-          <Button onClick={handleSave} className="gap-1.5">
-            <Save className="h-4 w-4" /> Save
-          </Button>
+           <div className="flex items-center gap-2">
+            {/* Edit button — navigates to dedicated edit page per sitemap */}
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/plans/${plan.plan_id}/edit`)}
+              className="gap-1.5"
+            >
+              <Pencil className="h-4 w-4" /> Edit
+            </Button>
+            <Button onClick={handleSave} className="gap-1.5">
+              <Save className="h-4 w-4" /> Save
+            </Button>
+          </div>
         </div>
 
-        {/* ── Editable Plan Title + Date Range ── */}
+        {/* ── Plan Title + Date Range (read-only) ── */}
+        {/* Title is read-only here; editing happens on /plans/:id/edit */}
         <div>
-          {/* Inline editable title — styled to look like a heading */}
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="border-none bg-transparent p-0 font-display text-2xl font-bold text-foreground focus-visible:ring-0 h-auto"
-          />
+          <h1 className="font-display text-2xl font-bold text-foreground">{plan.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {plan.start_date} — {plan.end_date}
           </p>
         </div>
 
         {/* ── Tasks Section ── */}
-        <section>
+        <section aria-label="Plan tasks">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <h2 className="font-display text-lg font-semibold text-foreground">Tasks</h2>
-
-            {/* Create Task Dialog */}
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline"><Plus className="mr-1 h-4 w-4" /> Create Task</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create Task</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 pt-2">
-                  <div className="space-y-2">
-                    <Label>Task Title</Label>
-                    <Input placeholder="e.g. Write report" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Deadline</Label>
-                      <Input type="date" value={taskDue} onChange={(e) => setTaskDue(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Effort (hours)</Label>
-                      <Input type="number" min={1} value={taskEffort} onChange={(e) => setTaskEffort(e.target.value)} />
-                    </div>
-                  </div>
-                  <Button onClick={handleCreateTask} className="w-full">Create Task</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                        {/* Navigate to dedicated Create Task page per wireframe sitemap */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate(`/tasks/new?plan=${plan.plan_id}`)}
+              className="gap-1"
+            >
+              <Plus className="h-4 w-4" /> Create Task
+            </Button>
           </div>
 
           {/* ── Tasks Table ── */}
+          {/* Columns: Task | Deadline | Effort | Status | View */}
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm" aria-label="Tasks list">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Task</th>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Deadline</th>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground hidden sm:table-cell">Effort</th>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground hidden sm:table-cell">Status</th>
-                      <th className="px-4 py-3 text-right font-medium text-muted-foreground">View</th>
+                      <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">Task</th>
+                      <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground">Deadline</th>
+                      <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground hidden sm:table-cell">Effort</th>
+                      <th scope="col" className="px-4 py-3 text-left font-medium text-muted-foreground hidden sm:table-cell">Status</th>
+                      <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">View</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -187,11 +134,11 @@ const PlanDetailPage = () => {
                           <td className="px-4 py-3 text-muted-foreground">{task.due_date}</td>
                           <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">{task.estimated_effort_hours} hrs</td>
                           <td className="px-4 py-3 hidden sm:table-cell">
+                            {/* Status badge — uses colour + text label (1.4.3) */}
                             <Badge variant="secondary" className={sc.className}>{sc.label}</Badge>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            {/* Navigate to the task detail page */}
-                            <Button size="icon" variant="ghost" onClick={() => navigate(`/tasks/${task.task_id}`)}>
+                            <Button size="icon" variant="ghost" onClick={() => navigate(`/tasks/${task.task_id}`)} aria-label={`View task: ${task.title}`}>
                               <ChevronRight className="h-4 w-4" />
                             </Button>
                           </td>
@@ -207,6 +154,9 @@ const PlanDetailPage = () => {
               </div>
             </CardContent>
           </Card>
+          {/* ── System Message Area ── */}
+          {/* Wireframe 3 shows "(System message: Weekly schedule updated)" */}
+          {/* This is handled by Sonner toast with aria-live (4.1.3) */}
         </section>
       </div>
     </AppLayout>
