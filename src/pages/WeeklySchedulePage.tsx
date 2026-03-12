@@ -1,105 +1,122 @@
-/**
- * WeeklySchedulePage.tsx — Weekly schedule grid view (Wireframe 5).
- *
- * ACCESSIBILITY (WCAG):
- *   - 1.4.3 Contrast: "Moved" badge uses icon + text + colour (not colour alone).
- *   - 2.1.1 Keyboard: All elements are in natural tab order.
- *   - Tables/cards use semantic HTML for screen reader navigation.
- *   - Section uses aria-label for landmark identification.
- */
-
+import { useEffect, useMemo, useState } from "react";
 import AppLayout from "@/components/AppLayout";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { mockScheduleEntries, mockTasks, mockPlans } from "@/services/mockData";
-import { RefreshCw } from "lucide-react";
+import { plansApi, tasksApi } from "@/services/api";
+import type { ScheduleEntry, StudyPlan, Task } from "@/types/models";
+import { CalendarRange } from "lucide-react";
+import { toast } from "sonner";
 
-// Days of the week labels (Monday-first, matching ISO week standard)
-const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+type ScheduleItem = ScheduleEntry & { taskTitle: string; planTitle: string };
 
-/**
- * getWeekEntries — Groups schedule entries by their scheduled_date.
- *
- * Returns a Record<string, ScheduleEntry[]> where key is the date string.
- */
-const getWeekEntries = () => {
-  const grouped: Record<string, typeof mockScheduleEntries> = {};
-  mockScheduleEntries.forEach((entry) => {
-    if (!grouped[entry.scheduled_date]) grouped[entry.scheduled_date] = [];
-    grouped[entry.scheduled_date].push(entry);
+const weekDates = () => {
+  const today = new Date();
+  const day = today.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + i);
+    return date;
   });
-  return grouped;
 };
 
+const formatISODate = (date: Date) => date.toISOString().slice(0, 10);
+
 const WeeklySchedulePage = () => {
-  const weekEntries = getWeekEntries();
-  const sortedDates = Object.keys(weekEntries).sort();
+  const [items, setItems] = useState<ScheduleItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const plans = (await plansApi.list()) as StudyPlan[];
+        const taskPayloads = await Promise.all(plans.map((plan) => plansApi.getTasks(plan.plan_id) as Promise<{ tasks: Task[] }>));
+        const tasks = taskPayloads.flatMap((payload) => payload.tasks || []);
+        const planMap = new Map(plans.map((plan) => [plan.plan_id, plan.title]));
+
+        const entryPayloads = await Promise.all(tasks.map((task) => tasksApi.getScheduleEntries(task.task_id) as Promise<{ schedule_entries: ScheduleEntry[] }>));
+        const merged: ScheduleItem[] = tasks.flatMap((task, index) =>
+          (entryPayloads[index].schedule_entries || []).map((entry) => ({
+            ...entry,
+            taskTitle: task.title,
+            planTitle: planMap.get(task.plan) || "Plan",
+          })),
+        );
+        setItems(merged);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to load weekly schedule");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const dates = useMemo(() => weekDates(), []);
+  const grouped = useMemo(() => {
+    const map: Record<string, ScheduleItem[]> = {};
+    for (const date of dates) {
+      map[formatISODate(date)] = [];
+    }
+    items.forEach((item) => {
+      if (map[item.scheduled_date]) {
+        map[item.scheduled_date].push(item);
+      }
+    });
+    Object.values(map).forEach((dayItems) => dayItems.sort((a, b) => a.taskTitle.localeCompare(b.taskTitle)));
+    return map;
+  }, [dates, items]);
 
   return (
     <AppLayout>
-      <div className="animate-fade-in space-y-6">
-        {/* ── Page Header ── */}
-        <div>
+      <div className="space-y-6 animate-fade-in">
+        <header className="space-y-1">
           <h1 className="font-display text-2xl font-bold text-foreground">Weekly Schedule</h1>
-          <p className="text-sm text-muted-foreground">Your planned study sessions this week</p>
-        </div>
-        {/* ── Day Cards Grid ── */}
-        <section aria-label="Weekly schedule by day">
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {sortedDates.map((date) => {
-              const entries = weekEntries[date];
-              const totalHours = entries.reduce((s, e) => s + e.planned_effort_hours, 0);
-              const d = new Date(date);
-              const dayName = daysOfWeek[d.getDay() === 0 ? 6 : d.getDay() - 1];
+          <p className="text-sm text-muted-foreground">A simple week view aligned with the sitemap route and existing backend data.</p>
+        </header>
 
-
-
+        {loading ? (
+          <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Loading schedule...</CardContent></Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {dates.map((date) => {
+              const iso = formatISODate(date);
+              const dayItems = grouped[iso] || [];
               return (
-                <Card key={date} className="overflow-hidden">
-                  {/* Day Header */}
-                  <div className="bg-primary px-4 py-2.5 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-primary-foreground">{dayName}</span>
-                    <span className="text-xs text-primary-foreground/70">{date}</span>
-                  </div>
-
-
-                  {/* Entry List */}
-                  <CardContent className="p-0 divide-y divide-border">
-                    {entries.map((entry) => {
-                      const task = mockTasks.find((t) => t.task_id === entry.task);
-                      const plan = task ? mockPlans.find((p) => p.plan_id === task.plan) : null;
-                      return (
-                        <div key={entry.entry_id} className="px-4 py-3 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-foreground">{task?.title || "Task"}</span>
-                            <span className="text-xs font-medium text-accent">{entry.planned_effort_hours}h</span>
+                <Card key={iso}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <CalendarRange className="h-4 w-4 text-accent" />
+                      {date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {dayItems.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No planned work.</p>
+                    ) : (
+                      dayItems.map((item) => (
+                        <div key={item.entry_id} className="rounded-lg border border-border bg-muted/20 p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{item.taskTitle}</p>
+                              <p className="text-xs text-muted-foreground">{item.planTitle}</p>
+                            </div>
+                            {item.is_rescheduled && <Badge variant="secondary" className="bg-warning/10 text-warning">Rescheduled</Badge>}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">{plan?.title}</span>
-                            {/* Rescheduled indicator — icon + text (1.4.3) */}
-                            {entry.is_rescheduled && (
-                              <Badge variant="secondary" className="bg-warning/10 text-warning text-[10px] gap-0.5 px-1.5 py-0">
-                                <RefreshCw className="h-2.5 w-2.5" aria-hidden="true" /> moved
-                              </Badge>
-                            )}
-                          </div>
-
-
+                          <p className="mt-2 text-xs text-muted-foreground">{item.planned_effort_hours} planned hour{item.planned_effort_hours === 1 ? "" : "s"}</p>
                         </div>
-                      );
-                    })}
+                      ))
+                    )}
                   </CardContent>
-
-
-                  {/* Day Footer — Total Hours */}
-                  <div className="border-t bg-muted/50 px-4 py-2 text-xs text-muted-foreground text-right">
-                    Total: <span className="font-medium text-foreground">{totalHours}h</span>
-                  </div>
                 </Card>
               );
             })}
           </div>
-        </section>
+        )}
       </div>
     </AppLayout>
   );

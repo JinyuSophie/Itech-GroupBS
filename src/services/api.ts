@@ -1,26 +1,37 @@
-const BASE_URL = "http://127.0.0.1:8000/api";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
 function getHeaders(): HeadersInit {
-  const token = localStorage.getItem("auth_token");
   return {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Token ${token}` } : {}),
   };
 }
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     ...options,
-    headers: { ...getHeaders(), ...options?.headers },
+    headers: { "Content-Type": "application/json", ...(options?.headers || {})},
     credentials: "include",
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(error.detail || "Request failed");
+    const errorText = await res.text();
+    let detail = res.statusText || "Request failed";
+
+    try {
+      const parsed = JSON.parse(errorText);
+      detail = parsed.detail || parsed.error || errorText || detail;
+    } catch {
+      detail = errorText || detail;
+    }
+
+    throw new Error(detail);
   }
 
-  return res.json();
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
+  return res.json() as Promise<T>;
 }
 
 export const healthApi = {
@@ -73,7 +84,7 @@ export const plansApi = {
       method: "DELETE",
     }),
 
-  getTasks: (id: number) => request(`/plans/${id}/tasks/`),
+  getTasks: (id: number) => request<{ plan: any; tasks: any[] }>(`/plans/${id}/tasks/`),
 };
 
 export const tasksApi = {
@@ -91,7 +102,10 @@ export const tasksApi = {
 
   get: (id: number) => request(`/tasks/${id}/`),
 
-  update: (id: number, data: { title?: string; status?: string; due_date?: string }) =>
+  update: (
+    id: number,
+    data: { title?: string; status?: string; due_date?: string; estimated_effort_hours?: number },
+  ) =>
     request(`/tasks/${id}/`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -107,16 +121,47 @@ export const tasksApi = {
     request(`/tasks/${id}/`, {
       method: "DELETE",
     }),
+
+  getScheduleEntries: (id: number) => request<{ task: any; schedule_entries: any[] }>(`/tasks/${id}/schedule-entries/`),
+  createScheduleEntry: (id: number, data: { scheduled_date: string; planned_effort_hours: number; is_rescheduled?: boolean }) =>
+    request(`/tasks/${id}/schedule-entries/`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
+
+export const scheduleEntriesApi = {
+  get: (id: number) => request(`/schedule-entries/${id}/`),
+  update: (id: number, data: { scheduled_date?: string; planned_effort_hours?: number; is_rescheduled?: boolean }) =>
+    request(`/schedule-entries/${id}/`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  delete: (id: number) =>
+    request(`/schedule-entries/${id}/`, {
+      method: "DELETE",
+    }),
+  getProgressLogs: (id: number) => request<{ schedule_entry: any; progress_logs: any[] }>(`/schedule-entries/${id}/progress-logs/`),
+  createProgressLog: (id: number, data: { actual_effort_hours: number; completed_flag?: boolean }) =>
+    request(`/schedule-entries/${id}/progress-logs/`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
+
+export const progressLogsApi = {
+  get: (id: number) => request(`/progress-logs/${id}/`),
+  update: (id: number, data: { actual_effort_hours?: number; completed_flag?: boolean }) =>
+    request(`/progress-logs/${id}/`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  delete: (id: number) =>
+    request(`/progress-logs/${id}/`, {
+      method: "DELETE",
+    }),
 };
 
 export const dashboardApi = {
   get: () => request("/dashboard"),
-};
-
-export const scheduleApi = {
-  weekly: () => request("/schedule/weekly"),
-};
-
-export const summaryApi = {
-  weekly: () => request("/summary/weekly"),
 };
