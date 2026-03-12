@@ -4,20 +4,19 @@
  * This context provides user session data and auth actions (login, register, logout)
  * to every component in the app via the useAuth() hook.
  *
- * CURRENT STATE: Uses mock authentication (no real API calls).
+ * CURRENT STATE: Uses Django session authentication via backend API calls.
  * TO CONNECT TO DJANGO:
  *   1. Import authApi from "@/services/api".
- *   2. Replace the mock logic in login() and register() with real API calls.
- *   3. Store the returned token in localStorage for subsequent requests.
- *   4. Optionally call authApi.session() on mount to restore sessions.
+ *   2. Persist the returned user in localStorage.
+ *   3. Call authApi.session() on mount to restore sessions.
  *
  * SESSION PERSISTENCE:
  *   The user object is stored in localStorage so the session survives page reloads.
- *   The auth token is also stored separately for use by the API service layer.
  */
 
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { User } from "@/types/models";
+import { authApi } from "@/services/api";
 
 // ─── Context Type Definition ───────────────────────────────────────────────────
 
@@ -45,37 +44,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return saved ? JSON.parse(saved) : null;
   });
 
+  useEffect(() => {
+    authApi
+      .session()
+      .then((response) => {
+        localStorage.setItem("study_planner_user", JSON.stringify(response.user));
+        setUser(response.user);
+      })
+      .catch(() => {
+        localStorage.removeItem("study_planner_user");
+        setUser(null);
+      });
+  }, []);
+
   /**
    * login() — Authenticate an existing user.
-   *
-   * TODO: Replace mock logic with:
-   *   const response = await authApi.login({ email, password });
-   *   localStorage.setItem("auth_token", response.token);
-   *   localStorage.setItem("study_planner_user", JSON.stringify(response.user));
-   *   setUser(response.user);
    */
-  const login = useCallback(async (email: string, _password: string) => {
-    // Mock: create a fake user object without hitting the backend
-    const mockUser: User = { user_id: 1, email, created_at: new Date().toISOString() };
-    localStorage.setItem("study_planner_user", JSON.stringify(mockUser));
-    localStorage.setItem("auth_token", "mock-token");
-    setUser(mockUser);
+  const login = useCallback(async (email: string, password: string) => {
+    const response = await authApi.login({ email, password });
+    localStorage.setItem("study_planner_user", JSON.stringify(response.user));
+    setUser(response.user);
   }, []);
 
   /**
    * register() — Create a new user account.
-   *
-   * TODO: Replace mock logic with:
-   *   const response = await authApi.register({ email, password, confirm_password: password });
-   *   localStorage.setItem("auth_token", response.token);
-   *   localStorage.setItem("study_planner_user", JSON.stringify(response.user));
-   *   setUser(response.user);
    */
-  const register = useCallback(async (email: string, _password: string) => {
-    const mockUser: User = { user_id: 1, email, created_at: new Date().toISOString() };
-    localStorage.setItem("study_planner_user", JSON.stringify(mockUser));
-    localStorage.setItem("auth_token", "mock-token");
-    setUser(mockUser);
+  const register = useCallback(async (email: string, password: string) => {
+    const response = await authApi.register({ email, password, confirm_password: password });
+    localStorage.setItem("study_planner_user", JSON.stringify(response.user));
+    setUser(response.user);
   }, []);
 
   /**
@@ -83,8 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * This will cause ProtectedRoute to redirect the user to the login page.
    */
   const logout = useCallback(() => {
+    authApi.logout().catch(() => undefined);
     localStorage.removeItem("study_planner_user");
-    localStorage.removeItem("auth_token");
     setUser(null);
   }, []);
 

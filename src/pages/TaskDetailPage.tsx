@@ -19,14 +19,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { mockTasks, mockScheduleEntries, mockPlans } from "@/services/mockData";
-import type { TaskStatus } from "@/types/models";
-import { ArrowLeft, Save, Clock, CalendarDays, RefreshCw, Target } from "lucide-react";
+import { plansApi, tasksApi } from "@/services/api";
+import type { StudyPlan, Task, TaskStatus } from "@/types/models";
+import { ArrowLeft, Save, Clock, CalendarDays, Target } from "lucide-react";
 import { toast } from "sonner";
-
-// ─── Status Options ────────────────────────────────────────────────────────────
-// Each status maps to a label and a progress percentage.
-// This drives both the status selector dropdown and the progress bar.
 
 const statusOptions: { value: TaskStatus; label: string; progress: number }[] = [
   { value: "not_started", label: "Not Started", progress: 0 },
@@ -48,14 +44,66 @@ const TaskDetailPage = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
 
-  // Find the task from mock data
-  const task = mockTasks.find((t) => t.task_id === Number(taskId));
+  const [task, setTask] = useState<Task | null>(null);
+  const [plan, setPlan] = useState<StudyPlan | null>(null);
+  const [status, setStatus] = useState<TaskStatus>("not_started");
+  const [loading, setLoading] = useState(true);
 
-  // ── Local State ──────────────────────────────────────────────────────────────
-  // Track the selected status locally so the progress bar updates instantly
-  const [status, setStatus] = useState<TaskStatus>(task?.status || "not_started");
+  const numericTaskId = Number(taskId);
 
-  // ── Not Found ────────────────────────────────────────────────────────────────
+  const loadTask = async () => {
+    if (!numericTaskId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const taskResponse = (await tasksApi.get(numericTaskId)) as Task;
+      setTask(taskResponse);
+      setStatus(taskResponse.status);
+
+      try {
+        const planResponse = (await plansApi.get(taskResponse.plan)) as StudyPlan;
+        setPlan(planResponse);
+      } catch {
+        setPlan(null);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load task");
+      setTask(null);
+      setPlan(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTask();
+  }, [numericTaskId]);
+
+  const currentStatus = statusOptions.find((option) => option.value === status) || statusOptions[0];
+
+  const handleSave = async () => {
+    if (!task) return;
+
+    try {
+      await tasksApi.updateStatus(task.task_id, { status });
+      setTask({ ...task, status });
+      toast.success("Task status updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update task");
+    }
+  };
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="py-20 text-center text-muted-foreground">Loading task...</div>
+      </AppLayout>
+    );
+  }
+
   if (!task) {
     return (
       <AppLayout>
@@ -98,7 +146,6 @@ const TaskDetailPage = () => {
           </Button>
         </div>
 
-        {/* ── Task Title + Plan Name ── */}
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">{task.title}</h1>
           {plan && <p className="text-sm text-muted-foreground mt-1">{plan.title}</p>}

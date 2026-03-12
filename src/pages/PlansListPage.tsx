@@ -16,13 +16,28 @@ import AppLayout from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { mockPlans, mockTasks } from "@/services/mockData";
-import type { StudyPlan } from "@/types/models";
+import { plansApi } from "@/services/api";
+import type { StudyPlan, Task } from "@/types/models";
 import { Plus, Trash2, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
+type TaskStats = { count: number; progress: number };
+
 const PlansListPage = () => {
   const navigate = useNavigate();
+  const [plans, setPlans] = useState<StudyPlan[]>([]);
+  const [statsByPlan, setStatsByPlan] = useState<Record<number, TaskStats>>({});
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newStart, setNewStart] = useState("");
+  const [newEnd, setNewEnd] = useState("");
+
+  const loadPlans = async () => {
+    setLoading(true);
+    try {
+      const plansData = (await plansApi.list()) as StudyPlan[];
+      setPlans(plansData);
 
   // ── State ────────────────────────────────────────────────────────────────────
   // Local copy of plans for delete operations.
@@ -50,14 +65,18 @@ const PlansListPage = () => {
    */
   const handleDelete = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setPlans(plans.filter((p) => p.plan_id !== id));
-    toast.success("Plan deleted.");
+    try {
+      await plansApi.delete(id);
+      await loadPlans();
+      toast.success("Plan deleted");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete plan");
+    }
   };
 
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-6">
-        {/* ── Page Header with Create Button ── */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="font-display text-2xl font-bold text-foreground">Study Plans</h1>

@@ -46,7 +46,6 @@ const PlanDetailPage = () => {
   // ── Local State ──────────────────────────────────────────────────────────────
   // Tasks are filtered by plan FK, stored locally for add operations.// Tasks filtered by the plan FK — stored locally for display.  const [tasks, setTasks] = useState<Task[]>(mockTasks.filter((t) => t.plan === Number(planId)));
 
-  // ── Not Found State ──────────────────────────────────────────────────────────
   if (!plan) {
     return (
       <AppLayout>
@@ -66,7 +65,6 @@ const PlanDetailPage = () => {
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-6">
-        {/* ── Top Bar: Back + Save Buttons ── */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <Button variant="ghost" onClick={() => navigate("/plans")} className="gap-1.5" aria-label="Go back to plans list">
             <ArrowLeft className="h-4 w-4" /> Back to Plans
@@ -91,7 +89,7 @@ const PlanDetailPage = () => {
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">{plan.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {plan.start_date} — {plan.end_date}
+            {plan.start_date} - {plan.end_date}
           </p>
         </div>
 
@@ -145,7 +143,6 @@ const PlanDetailPage = () => {
                         </tr>
                       );
                     })}
-                    {/* Empty state */}
                     {tasks.length === 0 && (
                       <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No tasks yet. Create one to get started.</td></tr>
                     )}

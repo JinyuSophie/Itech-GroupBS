@@ -30,10 +30,16 @@ import { Eye, AlertTriangle, Clock } from "lucide-react";
 // Maps TaskStatus values to display labels and badge CSS classes.
 // Always pairs colour with text label (1.4.3 — not colour alone).
 
-const statusConfig = {
+const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
   not_started: { label: "Not Started", className: "bg-muted text-muted-foreground" },
   in_progress: { label: "In Progress", className: "bg-info/10 text-info" },
   completed: { label: "Completed", className: "bg-success/10 text-success" },
+};
+
+const emptyDashboard: DashboardData = {
+  progress_overview: [],
+  todays_tasks: [],
+  upcoming_deadlines: [],
 };
 
 const DashboardPage = () => {
@@ -45,7 +51,6 @@ const DashboardPage = () => {
   return (
     <AppLayout>
       <div className="animate-fade-in space-y-6">
-        {/* ── Page Header ── */}
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">
             Welcome, {user?.email?.split("@")[0] || "User"}!
@@ -85,9 +90,7 @@ const DashboardPage = () => {
                   <Progress value={progress_percent} className="h-2" aria-label={`${progress_percent}% complete`}/>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        </section>
+            </section>
 
         {/* ── Section 2: Today's Tasks ── */}
         {/* Table: Task | Plan | Deadline | [view] */}
