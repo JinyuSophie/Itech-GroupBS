@@ -1,4 +1,5 @@
 import json
+from datetime import date, timedelta
 
 from django.test import Client, TestCase
 
@@ -105,6 +106,38 @@ class PlansApiTests(TestCase):
         self.assertEqual(update_response.json()["status"], "in_progress")
         self.assertEqual(update_response.json()["due_date"], "2026-03-21")
 
+    def test_task_create_also_creates_schedule_entry(self):
+        plan_response = self.client.post(
+            "/api/plans/",
+            data=json.dumps(
+                {
+                    "title": "Internet Technology",
+                    "start_date": "2026-03-11",
+                    "end_date": "2026-05-01",
+                }
+            ),
+            content_type="application/json",
+        )
+        plan_id = plan_response.json()["plan_id"]
+
+        task_response = self.client.post(
+            "/api/tasks/",
+            data=json.dumps(
+                {
+                    "plan_id": plan_id,
+                    "title": "Write report",
+                    "deadline_date": "2026-03-20",
+                    "estimated_effort_hours": 2,
+                }
+            ),
+            content_type="application/json",
+        )
+        task_id = task_response.json()["task_id"]
+
+        entries_response = self.client.get(f"/api/tasks/{task_id}/schedule-entries/")
+        self.assertEqual(entries_response.status_code, 200)
+        self.assertEqual(len(entries_response.json()["schedule_entries"]), 1)
+
     def test_update_plan_title(self):
         plan_response = self.client.post(
             "/api/plans/",
@@ -161,6 +194,41 @@ class PlansApiTests(TestCase):
         self.assertIn("progress_overview", payload)
         self.assertIn("todays_tasks", payload)
         self.assertIn("upcoming_deadlines", payload)
+
+    def test_dashboard_includes_new_task_in_today_and_upcoming(self):
+        plan_response = self.client.post(
+            "/api/plans/",
+            data=json.dumps(
+                {
+                    "title": "Dashboard Plan",
+                    "start_date": "2026-03-11",
+                    "end_date": "2026-05-01",
+                }
+            ),
+            content_type="application/json",
+        )
+        plan_id = plan_response.json()["plan_id"]
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+
+        self.client.post(
+            "/api/tasks/",
+            data=json.dumps(
+                {
+                    "plan_id": plan_id,
+                    "title": "Task for dashboard",
+                    "deadline_date": tomorrow,
+                    "estimated_effort_hours": 2,
+                    "status": "not_started",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        response = self.client.get("/api/dashboard")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertGreaterEqual(len(payload["todays_tasks"]), 1)
+        self.assertGreaterEqual(len(payload["upcoming_deadlines"]), 1)
 
 
 class ScheduleAndProgressApiTests(TestCase):
@@ -222,7 +290,7 @@ class ScheduleAndProgressApiTests(TestCase):
 
         list_response = self.client.get(f"/api/tasks/{self.task_id}/schedule-entries/")
         self.assertEqual(list_response.status_code, 200)
-        self.assertEqual(len(list_response.json()["schedule_entries"]), 1)
+        self.assertGreaterEqual(len(list_response.json()["schedule_entries"]), 2)
 
         update_response = self.client.put(
             f"/api/schedule-entries/{entry_id}/",

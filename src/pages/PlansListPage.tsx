@@ -4,8 +4,8 @@ import AppLayout from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { mockPlans, mockTasks } from "@/services/mockData";
-import type { StudyPlan } from "@/types/models";
+import { plansApi } from "@/services/api";
+import type { StudyPlan, Task } from "@/types/models";
 import { Plus, Trash2, Calendar } from "lucide-react";
 import { toast } from "sonner";
 

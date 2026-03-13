@@ -47,7 +47,7 @@ if HAS_CORSHEADERS:
     INSTALLED_APPS.append('corsheaders')
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'studyplanner.cors.SimpleCorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -55,8 +55,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    
 ]
+
+if HAS_CORSHEADERS:
+    MIDDLEWARE.insert(1, 'corsheaders.middleware.CorsMiddleware')
 
 ROOT_URLCONF = 'studyplanner.urls'
 

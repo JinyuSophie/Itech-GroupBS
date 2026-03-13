@@ -4,6 +4,7 @@ from functools import wraps
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.http import HttpRequest, HttpResponseBadRequest, HttpResponseNotAllowed, JsonResponse
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 
@@ -323,6 +324,14 @@ def task_create(request: HttpRequest):
         estimated_effort_hours=est_val,
     )
 
+    # Create a default schedule entry so weekly schedule has data immediately.
+    ScheduleEntry.objects.create(
+        task=task,
+        scheduled_date=date.today(),
+        planned_effort_hours=est_val,
+        is_rescheduled=False,
+    )
+
     return JsonResponse(_serialize_task(task), status=201)
 
 
@@ -627,7 +636,11 @@ def dashboard(request: HttpRequest):
         progress_overview.append({"plan": _serialize_plan(plan), "progress_percent": progress_percent})
 
     todays_tasks_qs = (
-        Task.objects.filter(plan__user=request.user, deadline_date=today).select_related("plan").order_by("deadline_date", "id")
+        Task.objects.filter(plan__user=request.user)
+        .filter(Q(deadline_date=today) | Q(scheduleentry__scheduled_date=today))
+        .select_related("plan")
+        .order_by("deadline_date", "id")
+        .distinct()
     )
     todays_tasks = []
     for task in todays_tasks_qs:
@@ -636,11 +649,7 @@ def dashboard(request: HttpRequest):
         item["days_until_due"] = 0
         todays_tasks.append(item)
 
-    upcoming_qs = (
-        Task.objects.filter(plan__user=request.user, deadline_date__gte=today)
-        .select_related("plan")
-        .order_by("deadline_date", "id")[:10]
-    )
+    upcoming_qs = Task.objects.filter(plan__user=request.user).select_related("plan").order_by("deadline_date", "id")[:10]
     upcoming_deadlines = []
     for task in upcoming_qs:
         item = _serialize_task(task)
