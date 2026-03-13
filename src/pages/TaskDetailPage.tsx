@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { plansApi, tasksApi } from "@/services/api";
-import type { StudyPlan, Task, TaskStatus } from "@/types/models";
-import { ArrowLeft, Save, Clock, CalendarDays, Target } from "lucide-react";
+import type { ScheduleEntry, StudyPlan, Task, TaskStatus } from "@/types/models";
+import { ArrowLeft, CalendarDays, Clock, RefreshCw, Save, Target } from "lucide-react";
 import { toast } from "sonner";
 
 const statusOptions: { value: TaskStatus; label: string; progress: number }[] = [
@@ -23,16 +23,18 @@ const statusBadgeClass: Record<TaskStatus, string> = {
   completed: "bg-success/10 text-success",
 };
 
+const formatDate = (value: string) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
 const TaskDetailPage = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
+  const numericTaskId = Number(taskId);
 
   const [task, setTask] = useState<Task | null>(null);
   const [plan, setPlan] = useState<StudyPlan | null>(null);
+  const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [status, setStatus] = useState<TaskStatus>("not_started");
   const [loading, setLoading] = useState(true);
-
-  const numericTaskId = Number(taskId);
 
   const loadTask = async () => {
     if (!numericTaskId) {
@@ -43,7 +45,9 @@ const TaskDetailPage = () => {
     setLoading(true);
     try {
       const taskResponse = (await tasksApi.get(numericTaskId)) as Task;
+      const entriesResponse = (await tasksApi.getScheduleEntries(numericTaskId)) as { schedule_entries: ScheduleEntry[] };
       setTask(taskResponse);
+      setEntries(entriesResponse.schedule_entries || []);
       setStatus(taskResponse.status);
 
       try {
@@ -56,20 +60,21 @@ const TaskDetailPage = () => {
       toast.error(error instanceof Error ? error.message : "Failed to load task");
       setTask(null);
       setPlan(null);
+      setEntries([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadTask();
+    void loadTask();
   }, [numericTaskId]);
 
-  const currentStatus = statusOptions.find((option) => option.value === status) || statusOptions[0];
+  const currentStatus = useMemo(() => statusOptions.find((option) => option.value === status) || statusOptions[0], [status]);
+  const totalScheduledHours = entries.reduce((sum, entry) => sum + entry.planned_effort_hours, 0);
 
   const handleSave = async () => {
     if (!task) return;
-
     try {
       await tasksApi.updateStatus(task.task_id, { status });
       setTask({ ...task, status });
@@ -80,25 +85,17 @@ const TaskDetailPage = () => {
   };
 
   if (loading) {
-    return (
-      <AppLayout>
-        <div className="py-20 text-center text-muted-foreground">Loading task...</div>
-      </AppLayout>
-    );
+    return <AppLayout><div className="py-20 text-center text-muted-foreground">Loading task...</div></AppLayout>;
   }
 
   if (!task) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center py-20 text-muted-foreground">Task not found.</div>
-      </AppLayout>
-    );
+    return <AppLayout><div className="py-20 text-center text-muted-foreground">Task not found.</div></AppLayout>;
   }
 
   return (
     <AppLayout>
-      <div className="animate-fade-in space-y-6 max-w-2xl">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="mx-auto max-w-3xl space-y-6 animate-fade-in">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Button variant="ghost" onClick={() => navigate(plan ? `/plans/${plan.plan_id}` : "/plans")} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" /> Back to Plan
           </Button>
@@ -109,38 +106,34 @@ const TaskDetailPage = () => {
 
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">{task.title}</h1>
-          {plan && <p className="text-sm text-muted-foreground mt-1">{plan.title}</p>}
+          {plan && <p className="mt-1 text-sm text-muted-foreground">{plan.title}</p>}
         </div>
 
         <Card>
-          <CardContent className="pt-5 pb-5 space-y-3">
+          <CardContent className="space-y-3 pt-5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-accent" />
-                <span className="text-sm font-medium text-foreground">Task Progress</span>
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Target className="h-4 w-4 text-accent" aria-hidden="true" /> Task Progress
               </div>
-              <Badge variant="secondary" className={statusBadgeClass[status]}>
-                {currentStatus.label}
-              </Badge>
+              <Badge variant="secondary" className={statusBadgeClass[status]}>{currentStatus.label}</Badge>
             </div>
-            <Progress value={currentStatus.progress} className="h-3" />
-            <p className="text-xs text-muted-foreground text-right">{currentStatus.progress}% complete</p>
+            <Progress value={currentStatus.progress} className="h-3" aria-label={`Task progress ${currentStatus.progress}%`} />
+            <p className="text-right text-xs text-muted-foreground">{currentStatus.progress}% complete</p>
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Card>
-            <CardContent className="pt-5 pb-4 flex items-center gap-3">
+            <CardContent className="flex items-center gap-3 pt-5">
               <CalendarDays className="h-5 w-5 text-accent" />
               <div>
                 <p className="text-xs text-muted-foreground">Deadline</p>
-                <p className="text-sm font-medium text-foreground">{task.due_date}</p>
+                <p className="text-sm font-medium text-foreground">{formatDate(task.due_date)}</p>
               </div>
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="pt-5 pb-4 flex items-center gap-3">
+            <CardContent className="flex items-center gap-3 pt-5">
               <Clock className="h-5 w-5 text-accent" />
               <div>
                 <p className="text-xs text-muted-foreground">Estimated Effort</p>
@@ -166,9 +159,22 @@ const TaskDetailPage = () => {
           </Card>
         </div>
 
-        <section>
-          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <Card>
+          <CardContent className="pt-5">
+            <p className="mb-2 text-xs text-muted-foreground">Status</p>
+            <Select value={status} onValueChange={(value) => setStatus(value as TaskStatus)}>
+              <SelectTrigger aria-label="Change task status"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        <section aria-label="Scheduled work entries" className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-lg font-semibold text-foreground">Scheduled Work</h2>
+            <span className="text-xs text-muted-foreground">{totalScheduledHours} / {task.estimated_effort_hours} hours scheduled</span>
           </div>
           <Card>
             <CardContent className="p-0">
@@ -182,9 +188,23 @@ const TaskDetailPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">No scheduled entries yet.</td>
-                    </tr>
+                    {entries.length === 0 ? (
+                      <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">No scheduled entries yet.</td></tr>
+                    ) : (
+                      entries.map((entry) => (
+                        <tr key={entry.entry_id} className="border-b last:border-0">
+                          <td className="px-4 py-3 text-foreground">{formatDate(entry.scheduled_date)}</td>
+                          <td className="px-4 py-3 text-foreground">{entry.planned_effort_hours}</td>
+                          <td className="px-4 py-3">
+                            {entry.is_rescheduled ? (
+                              <Badge variant="secondary" className="gap-1 bg-warning/10 text-warning"><RefreshCw className="h-3 w-3" /> Rescheduled</Badge>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

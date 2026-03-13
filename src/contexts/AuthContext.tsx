@@ -23,9 +23,10 @@ import { authApi } from "@/services/api";
 interface AuthContextType {
   user: User | null;               // Current logged-in user, or null if not authenticated
   isAuthenticated: boolean;        // Convenience boolean derived from user !== null
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;   // Authenticate existing user
   register: (email: string, password: string) => Promise<void>; // Create new user account
-  logout: () => void;              // Clear session and redirect to login
+  logout: () => Promise<void>;              // Clear session and redirect to login
 }
 
 // Create context with null default — useAuth() enforces it's used within provider
@@ -39,22 +40,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * This allows the session to persist across page refreshes.
    * The lazy initializer (function form) runs only once on mount.
    */
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem("study_planner_user");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const checkSession = async () => {
+    try {
+      const response = await authApi.session();
+      setUser(response.user);
+      setIsAuthenticated(true);
+    } catch {
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    authApi
-      .session()
-      .then((response) => {
-        localStorage.setItem("study_planner_user", JSON.stringify(response.user));
-        setUser(response.user);
-      })
-      .catch(() => {
-        localStorage.removeItem("study_planner_user");
-        setUser(null);
-      });
+    void checkSession();
   }, []);
 
   /**
@@ -62,8 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const login = useCallback(async (email: string, password: string) => {
     const response = await authApi.login({ email, password });
-    localStorage.setItem("study_planner_user", JSON.stringify(response.user));
     setUser(response.user);
+    setIsAuthenticated(true);
   }, []);
 
   /**
@@ -71,22 +75,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const register = useCallback(async (email: string, password: string) => {
     const response = await authApi.register({ email, password, confirm_password: password });
-    localStorage.setItem("study_planner_user", JSON.stringify(response.user));
     setUser(response.user);
+    setIsAuthenticated(true);
   }, []);
 
   /**
    * logout() — Clear all stored auth data and reset state.
    * This will cause ProtectedRoute to redirect the user to the login page.
    */
-  const logout = useCallback(() => {
-    authApi.logout().catch(() => undefined);
-    localStorage.removeItem("study_planner_user");
+  const logout = useCallback(async () => {
+    await authApi.logout();
     setUser(null);
+    setIsAuthenticated(false);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, register, logout, }}>
       {children}
     </AuthContext.Provider>
   );

@@ -29,7 +29,7 @@ const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/plans", label: "Plans", icon: FolderOpen },
   { to: "/schedule/week", label: "Schedule", icon: Calendar },
-  { to: "/schedule/summary", label: "Summary", icon: BarChart3 },
+  { to: "/summary/week", label: "Summary", icon: BarChart3 },
 ];
 
 // ─── Sidebar Content (shared between desktop and mobile) ───────────────────────
