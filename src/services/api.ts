@@ -3,7 +3,8 @@ const defaultApiBase =
     ? `${window.location.protocol}//${window.location.hostname}:8000/api`
     : "http://127.0.0.1:8000/api";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBase;
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "https://3097028z.pythonanywhere.com/api";
 
 function getHeaders(): HeadersInit {
   return {
