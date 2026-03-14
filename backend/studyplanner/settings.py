@@ -10,26 +10,80 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 from importlib.util import find_spec
+from urllib.parse import urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-+na0^6_9@$gpso62p3f9!zbni2h6$o3q!8w&yf1st4lp*^6323'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+def _env_csv(name: str, default: str = "") -> list[str]:
+    raw = os.getenv(name, default)
+    return [part.strip() for part in raw.split(",") if part.strip()]
 
-ALLOWED_HOSTS = []
+
+def _safe_hostname(url: str) -> str | None:
+    if not url:
+        return None
+    try:
+        return urlparse(url).hostname
+    except ValueError:
+        return None
+
+
+PUBLIC_APP_URL = os.getenv("PUBLIC_APP_URL", "").strip().rstrip("/")
+
+# Single deployable configuration: default to production-safe behavior.
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "replace-this-in-deployment")
+DEBUG = _env_bool("DJANGO_DEBUG", False)
+
+default_hosts = ["127.0.0.1", "localhost"]
+allowed_hosts = set(_env_csv("DJANGO_ALLOWED_HOSTS", ",".join(default_hosts)))
+public_host = _safe_hostname(PUBLIC_APP_URL)
+if public_host:
+    allowed_hosts.add(public_host)
+ALLOWED_HOSTS = sorted(allowed_hosts)
 
 
 # Application definition
+
+default_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+]
+allowed_origins = set(_env_csv("DJANGO_CORS_ALLOWED_ORIGINS", ",".join(default_origins)))
+if PUBLIC_APP_URL:
+    allowed_origins.add(PUBLIC_APP_URL)
+CORS_ALLOWED_ORIGINS = sorted(allowed_origins)
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+
+# Keep HTTPS/security options configurable for hosting providers.
+is_https_public = PUBLIC_APP_URL.startswith("https://")
+secure_by_default = (not DEBUG) and is_https_public
+SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", secure_by_default)
+SESSION_COOKIE_SECURE = _env_bool("DJANGO_SESSION_COOKIE_SECURE", secure_by_default)
+CSRF_COOKIE_SECURE = _env_bool("DJANGO_CSRF_COOKIE_SECURE", secure_by_default)
+SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_SECURE_HSTS_SECONDS", "31536000" if secure_by_default else "0"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", secure_by_default)
+SECURE_HSTS_PRELOAD = _env_bool("DJANGO_SECURE_HSTS_PRELOAD", secure_by_default)
+SESSION_COOKIE_SAMESITE = os.getenv("DJANGO_SESSION_COOKIE_SAMESITE", "Lax")
+CSRF_COOKIE_SAMESITE = os.getenv("DJANGO_CSRF_COOKIE_SAMESITE", "Lax")
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+X_FRAME_OPTIONS = "DENY"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
 
 HAS_CORSHEADERS = find_spec("corsheaders") is not None
 
@@ -125,20 +179,5 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
-
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-]
-CORS_ALLOW_CREDENTIALS = True
-
-CORS_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-]
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"

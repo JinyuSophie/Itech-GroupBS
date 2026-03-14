@@ -80,6 +80,31 @@ Run tests:
 npm test
 
 
+###**Deployment Environment Variables**###
+
+Frontend (`.env` at project root):
+
+```
+VITE_API_BASE_URL=https://your-backend-domain.example/api
+```
+
+Backend (set in your hosting platform; example in `backend/.env.example`):
+
+```
+DJANGO_SECRET_KEY=replace-with-a-long-random-secret
+DJANGO_DEBUG=False
+PUBLIC_APP_URL=https://your-frontend-domain.example
+DJANGO_ALLOWED_HOSTS=your-backend-domain.example
+DJANGO_CORS_ALLOWED_ORIGINS=https://your-frontend-domain.example
+DJANGO_SECURE_SSL_REDIRECT=True
+DJANGO_SESSION_COOKIE_SECURE=True
+DJANGO_CSRF_COOKIE_SECURE=True
+DJANGO_SECURE_HSTS_SECONDS=31536000
+DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+DJANGO_SECURE_HSTS_PRELOAD=True
+```
+
+
 The app is fully responsive and mobile-first:
 - **Mobile** (`<768px`): Hamburger menu opens a slide-over sidebar
 - **Tablet** (`768px–1024px`): Compact sidebar visible

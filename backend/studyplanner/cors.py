@@ -4,7 +4,7 @@ from django.http import HttpResponse
 
 class SimpleCorsMiddleware:
     """
-    Minimal CORS support for local frontend/backend development.
+    Minimal CORS support using CORS_ALLOWED_ORIGINS from settings.
     Handles preflight OPTIONS requests and appends allow headers.
     """
 
