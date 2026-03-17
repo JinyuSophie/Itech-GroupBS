@@ -3,40 +3,25 @@ const defaultApiBase =
     ? `${window.location.protocol}//${window.location.hostname}:8000/api`
     : "http://127.0.0.1:8000/api";
 
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://3097028z.pythonanywhere.com/api";
-
-function getHeaders(): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-  };
-}
+export const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || defaultApiBase;
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     ...options,
-    headers: { "Content-Type": "application/json", ...(options?.headers || {})},
+    headers: {
+      "Content-Type": "application/json",
+      ...(options?.headers || {}),
+    },
     credentials: "include",
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    let detail = res.statusText || "Request failed";
-
-    try {
-      const parsed = JSON.parse(errorText);
-      detail = parsed.detail || parsed.error || errorText || detail;
-    } catch {
-      detail = errorText || detail;
-    }
-
-    throw new Error(detail);
+    const text = await res.text();
+    throw new Error(text || "Request failed");
   }
 
-  if (res.status === 204) {
-    return undefined as T;
-  }
-
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -169,5 +154,5 @@ export const progressLogsApi = {
 };
 
 export const dashboardApi = {
-  get: () => request("/dashboard"),
+  get: () => request("/dashboard/"),
 };
