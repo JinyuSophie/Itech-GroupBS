@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path("health/", views.health),
+    path("dashboard/", views.dashboard),
     path("dashboard", views.dashboard),
     path("auth/register/", views.auth_register),
     path("auth/login/", views.auth_login),
@@ -15,6 +16,10 @@ urlpatterns = [
     path("tasks/<int:task_id>/", views.task_detail),
     path("tasks/<int:task_id>/status/", views.task_update_status),
     path("tasks/<int:task_id>/schedule-entries/", views.task_schedule_entries),
+    path("tasks/<int:task_id>/auto-reschedule/", views.task_auto_reschedule),
+    path("schedule/weekly/", views.schedule_weekly),
+    path("summary/weekly/", views.summary_weekly),
+    path("schedule/auto-reschedule/", views.schedule_auto_reschedule),
     path("schedule-entries/<int:entry_id>/", views.schedule_entry_detail),
     path("schedule-entries/<int:entry_id>/progress-logs/", views.schedule_entry_progress_logs),
     path("progress-logs/<int:log_id>/", views.progress_log_detail),
