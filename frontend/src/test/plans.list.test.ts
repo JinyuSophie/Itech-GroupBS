@@ -16,7 +16,6 @@ Object.defineProperty(window, "localStorage", { value: localStorageMock });
 describe("Plans API - List Plans", () => {
   beforeEach(() => {
     global.fetch = vi.fn();
-    localStorage.setItem("auth_token", "test-token");
   });
 
   afterEach(() => {
@@ -41,7 +40,8 @@ describe("Plans API - List Plans", () => {
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/api/plans"),
       expect.objectContaining({
-        headers: expect.objectContaining({ Authorization: "Token test-token" }),
+        credentials: "include",
+        headers: expect.objectContaining({ "Content-Type": "application/json" }),
       })
     );
   });

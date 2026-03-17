@@ -1,9 +1,15 @@
+const trimTrailingSlash = (value: string) => value.replace(/\/+$/, "");
+
 const defaultApiBase =
   typeof window !== "undefined"
-    ? `${window.location.protocol}//${window.location.hostname}:8000/api`
+    ? trimTrailingSlash(
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+          ? `${window.location.protocol}//${window.location.hostname}:8000/api`
+          : "https://3097028z.pythonanywhere.com/api"
+      )
     : "http://127.0.0.1:8000/api";
 
-export const BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBase;
+export const BASE_URL = trimTrailingSlash(import.meta.env.VITE_API_BASE_URL || defaultApiBase);
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   let res: Response;
