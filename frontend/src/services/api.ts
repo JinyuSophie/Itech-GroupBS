@@ -1,11 +1,23 @@
-const defaultApiBase =
-  typeof window !== "undefined"
-    ? `${window.location.protocol}//${window.location.hostname}:8000/api`
-    : "http://127.0.0.1:8000/api";
+const defaultApiBase = (() => {
+  if (typeof window === "undefined") return "http://127.0.0.1:8000/api";
+
+  const host = window.location.hostname;
+  const isLocalhost = host === "localhost" || host === "127.0.0.1";
+
+  // Local development: Django usually runs on :8000.
+  if (isLocalhost) return `${window.location.protocol}//${host}:8000/api`;
+
+  // Production (e.g. Vercel): prefer same-origin /api unless env override is provided.
+  return "/api";
+})();
 
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL || defaultApiBase;
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const controller = new AbortController();
+  const timeoutMs = Number(import.meta.env.VITE_API_TIMEOUT_MS || 7000);
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}${endpoint}`, {
@@ -15,9 +27,15 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
         ...(options?.headers || {}),
       },
       credentials: "include",
+      signal: controller.signal,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`Request timed out after ${timeoutMs}ms.`);
+    }
     throw new Error("Cannot connect to the backend server.");
+  } finally {
+    globalThis.clearTimeout(timeoutId);
   }
 
   if (!res.ok) {

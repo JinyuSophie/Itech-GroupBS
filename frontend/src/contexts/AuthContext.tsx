@@ -18,9 +18,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem("study_planner_user");
     return saved ? JSON.parse(saved) : null;
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    setIsLoading(true);
+
     authApi
       .session()
       .then((response) => {
