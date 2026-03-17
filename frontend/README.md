@@ -1,112 +1,33 @@
-###**StudyPlanner – Frontend**###
+# StudyPlanner Frontend
 
-StudyPlanner is a web application that helps students organise their study workload by creating study plans, managing tasks, and generating weekly schedules. The system allows users to break large academic goals into manageable tasks and monitor their progress over time.
+This directory contains the React frontend for StudyPlanner.
 
+For the full project overview, backend setup, testing instructions, deployment notes, and coursework report sections, see the root README:
 
-###**Features**###
+- [README.md](d:/Study_Planner_GroupBS/README.md)
 
-The application provides the following core functionality:
+## Frontend Commands
 
-**User authentication**
-	•	Register a new account
-	•	Login and logout
-	•	Session validation
+From `frontend/`:
 
-**Study plan management**
-	•	Create and manage multiple study plans
-	•	Update or delete existing plans
-
-**Task management**
-	•	Add tasks to study plans
-	•	Set deadlines and estimated effort
-	•	Update task status
-
-**Scheduling**
-	•	Generate a weekly study schedule
-	•	View planned tasks for the current week
-
-**Dashboard**
-	•	Overview of progress
-	•	Today’s tasks and upcoming deadlines
-
-**Weekly summary**
-	•	Overview of productivity for the week
-
-
-###**Tech Stack**###
-
-**Frontend:**
-- React 18 with TypeScript
-- Vite (build tool)
-- Tailwind CSS + shadcn-ui (component library)
-- React Router (client-side routing)
-- React Hook Form (form management)
-- TanStack React Query (server-state caching)
-
-**Backend (To Be Connected):**
-
-
-###**Project Structure**###
-
-src/
- ├── components/   # Reusable UI components
- ├── contexts/     # React context providers
- ├── hooks/        # Custom React hooks
- ├── lib/          # Utility functions
- ├── pages/        # Application pages
- ├── services/     # API service layer
- ├── types/        # TypeScript interfaces
- ├── test/         # Unit tests
- ├── App.tsx
- └── main.tsx      # App entry point
-
- The API communication is centralised in:
- src/services/api.ts
- **This file handles all requests to the backend including authentication, study plans, tasks, schedules, dashboard data, and summaries.
-
-
-###**Running the Project**###
-
-Install dependencies:
+```powershell
 npm install
-
-Start the development server:
 npm run dev
-
-Build the project:
 npm run build
-
-Run tests:
 npm test
+```
 
+## Environment Variables
 
-The app is fully responsive and mobile-first:
-- **Mobile** (`<768px`): Hamburger menu opens a slide-over sidebar
-- **Tablet** (`768px–1024px`): Compact sidebar visible
-- **Desktop** (`>1024px`): Full sidebar navigation
+Create a local `.env` file if you need to override the API target:
 
+```env
+VITE_API_BASE_URL=https://3097028z.pythonanywhere.com/api
+VITE_API_TIMEOUT_MS=7000
+```
 
-###**Testing**###
+The API client is centralised in:
 
-The project includes automated tests using Vitest.
+- [src/services/api.ts](d:/Study_Planner_GroupBS/frontend/src/services/api.ts)
 
-Tests cover key features such as:
-	•	authentication
-	•	protected routes
-	•	study plan creation
-	•	task updates and deletion
-	•	dashboard loading
-	•	weekly scheduling
-	•	summary generation
-
-
-###**Contributors**###
-
-Group BS
-University of Glasgow
-	•	Jinyu Fu - Frontend
-	•	Xinyu Liu - Documentations
-	•	Yuxin Zhang - Backend
-
-
-**Last Updated:** 4th March 2026
+It handles authentication, plans, tasks, schedule, dashboard, and summary requests.

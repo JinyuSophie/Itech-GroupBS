@@ -16,7 +16,6 @@ Object.defineProperty(window, "localStorage", { value: localStorageMock });
 describe("Plans API - List Plans", () => {
   beforeEach(() => {
     global.fetch = vi.fn();
-    localStorage.setItem("auth_token", "test-token");
   });
 
   afterEach(() => {

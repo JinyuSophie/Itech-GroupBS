@@ -8,6 +8,8 @@ class AuthApiTests(TestCase):
         self.client = Client()
 
     def test_register_creates_session(self):
+        # Registration is expected to create both the user record and an authenticated session
+        # because the React client relies on cookie-based access for subsequent API calls.
         response = self.client.post(
             "/api/auth/register/",
             data=json.dumps(
@@ -44,6 +46,8 @@ class PlansApiTests(TestCase):
         )
 
     def test_plans_requires_auth(self):
+        # Access-control behaviour is part of the coursework's authentication requirement,
+        # so this test asserts that protected data is not exposed anonymously.
         logged_out = Client()
         response = logged_out.get("/api/plans/")
         self.assertEqual(response.status_code, 401)
@@ -206,6 +210,8 @@ class ScheduleAndProgressApiTests(TestCase):
         self.task_id = task_response.json()["task_id"]
 
     def test_create_and_update_schedule_entry(self):
+        baseline_entries = self.client.get(f"/api/tasks/{self.task_id}/schedule-entries/").json()["schedule_entries"]
+
         create_response = self.client.post(
             f"/api/tasks/{self.task_id}/schedule-entries/",
             data=json.dumps(
@@ -222,7 +228,7 @@ class ScheduleAndProgressApiTests(TestCase):
 
         list_response = self.client.get(f"/api/tasks/{self.task_id}/schedule-entries/")
         self.assertEqual(list_response.status_code, 200)
-        self.assertEqual(len(list_response.json()["schedule_entries"]), 1)
+        self.assertEqual(len(list_response.json()["schedule_entries"]), len(baseline_entries) + 1)
 
         update_response = self.client.put(
             f"/api/schedule-entries/{entry_id}/",

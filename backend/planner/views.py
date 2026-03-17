@@ -87,6 +87,8 @@ def _round_hours(value: float) -> float:
 
 
 def _generate_initial_schedule(task: Task):
+    # The initial allocation spreads estimated hours across the available study window so
+    # a newly created task produces actionable schedule data immediately.
     if ScheduleEntry.objects.filter(task=task).exists() or task.estimated_effort_hours <= 0:
         return []
 
@@ -124,6 +126,8 @@ def _next_available_date(task: Task, start_day: date) -> date:
 
 
 def _reschedule_task_unfinished(task: Task):
+    # Rescheduling only carries forward unfinished effort, which keeps historical entries intact
+    # while still supporting a realistic weekly workload view.
     if task.status == Task.STATUS_COMPLETED:
         return []
 
@@ -163,6 +167,8 @@ def _serialize_schedule_entry_rich(entry: ScheduleEntry) -> dict:
 def api_login_required(view_func):
     @wraps(view_func)
     def _wrapped(request: HttpRequest, *args, **kwargs):
+        # API endpoints return JSON 401 responses so the React client can handle access control
+        # consistently without server-rendered redirects.
         if not request.user.is_authenticated:
             return JsonResponse({"detail": "Authentication required"}, status=401)
         return view_func(request, *args, **kwargs)

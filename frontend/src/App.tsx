@@ -20,6 +20,8 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
+  // Route-level access control keeps unauthenticated users out of protected React views
+  // before any page-specific data fetching runs.
   if (!isAuthenticated) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -47,6 +49,8 @@ function AppRoutes() {
 }
 
 const App = () => (
+  // Providers are composed once at the application boundary so routing, auth state,
+  // notifications, and server-state caching stay consistent across pages.
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />

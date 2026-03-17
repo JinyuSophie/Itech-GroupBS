@@ -7,7 +7,8 @@ const defaultApiBase = (() => {
   // Local development: Django usually runs on :8000.
   if (isLocalhost) return `${window.location.protocol}//${host}:8000/api`;
 
-  // Production (e.g. Vercel): prefer same-origin /api unless env override is provided.
+  // Production deployments should stay configurable via Vite env vars so the frontend
+  // can target either a proxied `/api` path or a separately hosted Django service.
   return "/api";
 })();
 
@@ -20,6 +21,8 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
   let res: Response;
   try {
+    // Centralising fetch concerns here keeps page components focused on user workflows
+    // rather than transport details such as cookies, timeouts, and error parsing.
     res = await fetch(`${BASE_URL}${endpoint}`, {
       ...options,
       headers: {
