@@ -97,8 +97,8 @@ Use `backend/.env.example` as the reference for deployment configuration. Import
 ```env
 DJANGO_DEBUG=False
 DJANGO_ALLOWED_HOSTS=3097028z.pythonanywhere.com,127.0.0.1,localhost
-DJANGO_CORS_ALLOWED_ORIGINS=https://itech-groupbs2.vercel.app,http://localhost:8080,http://127.0.0.1:8080
-DJANGO_CSRF_TRUSTED_ORIGINS=https://itech-groupbs2.vercel.app,https://3097028z.pythonanywhere.com
+DJANGO_CORS_ALLOWED_ORIGINS=https://itech-group-bs.vercel.app,http://localhost:8080,http://127.0.0.1:8080
+DJANGO_CSRF_TRUSTED_ORIGINS=https://itech-group-bs.vercel.app,https://3097028z.pythonanywhere.com
 DJANGO_SESSION_COOKIE_SAMESITE=None
 DJANGO_CSRF_COOKIE_SAMESITE=None
 DJANGO_SESSION_COOKIE_SECURE=True
@@ -146,7 +146,7 @@ Current coverage includes:
 
 ### Live URLs
 
-- Frontend: `https://itech-groupbs2.vercel.app`
+- Frontend: `https://itech-group-bs.vercel.app`
 - Backend: `https://3097028z.pythonanywhere.com`
 
 ### Deployment checklist
