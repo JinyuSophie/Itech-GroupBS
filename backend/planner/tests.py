@@ -3,7 +3,7 @@ from datetime import date, timedelta
 
 from django.test import Client, TestCase
 
-from .models import ScheduleEntry
+from .models import ScheduleEntry, Task
 
 
 class AuthApiTests(TestCase):
@@ -211,6 +211,7 @@ class ScheduleAndProgressApiTests(TestCase):
             content_type="application/json",
         )
         self.task_id = task_response.json()["task_id"]
+        self.plan_id = plan_id
 
     def test_create_and_update_schedule_entry(self):
         baseline_entries = self.client.get(f"/api/tasks/{self.task_id}/schedule-entries/").json()["schedule_entries"]
@@ -329,3 +330,78 @@ class ScheduleAndProgressApiTests(TestCase):
         second_response = self.client.post(f"/api/tasks/{self.task_id}/auto-reschedule/")
         self.assertEqual(second_response.status_code, 200)
         self.assertEqual(second_response.json()["created_count"], 0)
+
+    def test_weekly_schedule_excludes_completed_tasks(self):
+        today = date.today()
+
+        ScheduleEntry.objects.filter(task_id=self.task_id).delete()
+        ScheduleEntry.objects.create(
+            task_id=self.task_id,
+            scheduled_date=today,
+            planned_effort_hours=2,
+            is_rescheduled=False,
+        )
+
+        completed_task = Task.objects.create(
+            plan_id=self.plan_id,
+            title="Completed task",
+            deadline_date=today,
+            estimated_effort_hours=3,
+            status=Task.STATUS_COMPLETED,
+        )
+        ScheduleEntry.objects.create(
+            task=completed_task,
+            scheduled_date=today,
+            planned_effort_hours=3,
+            is_rescheduled=False,
+        )
+
+        response = self.client.get(f"/api/schedule/weekly/?start={today.isoformat()}")
+        self.assertEqual(response.status_code, 200)
+
+        entries = response.json()["days"][0]["entries"]
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["task"], self.task_id)
+
+    def test_weekly_summary_excludes_completed_task_workload(self):
+        today = date.today()
+
+        ScheduleEntry.objects.filter(task_id=self.task_id).delete()
+        in_progress_entry = ScheduleEntry.objects.create(
+            task_id=self.task_id,
+            scheduled_date=today,
+            planned_effort_hours=4,
+            is_rescheduled=False,
+        )
+        self.client.post(
+            f"/api/schedule-entries/{in_progress_entry.id}/progress-logs/",
+            data=json.dumps({"actual_effort_hours": 1.5, "completed_flag": False}),
+            content_type="application/json",
+        )
+
+        completed_task = Task.objects.create(
+            plan_id=self.plan_id,
+            title="Done task",
+            deadline_date=today,
+            estimated_effort_hours=6,
+            status=Task.STATUS_COMPLETED,
+        )
+        completed_entry = ScheduleEntry.objects.create(
+            task=completed_task,
+            scheduled_date=today,
+            planned_effort_hours=6,
+            is_rescheduled=False,
+        )
+        self.client.post(
+            f"/api/schedule-entries/{completed_entry.id}/progress-logs/",
+            data=json.dumps({"actual_effort_hours": 4, "completed_flag": True}),
+            content_type="application/json",
+        )
+
+        response = self.client.get(f"/api/summary/weekly/?start={today.isoformat()}")
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        self.assertEqual(payload["tasks_completed"], 1)
+        self.assertEqual(payload["total_effort_hours"], 1.5)
+        self.assertEqual(payload["remaining_workload_hours"], 2.5)

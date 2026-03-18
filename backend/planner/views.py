@@ -498,7 +498,12 @@ def schedule_weekly(request: HttpRequest):
     week_end = week_start + timedelta(days=6)
 
     entries = list(
-        ScheduleEntry.objects.filter(task__plan__user=request.user, scheduled_date__gte=week_start, scheduled_date__lte=week_end)
+        ScheduleEntry.objects.filter(
+            task__plan__user=request.user,
+            task__status__in=[Task.STATUS_NOT_STARTED, Task.STATUS_IN_PROGRESS],
+            scheduled_date__gte=week_start,
+            scheduled_date__lte=week_end,
+        )
         .select_related("task__plan")
         .order_by("scheduled_date", "id")
     )
@@ -535,6 +540,7 @@ def summary_weekly(request: HttpRequest):
 
     progress_logs = ProgressLog.objects.filter(
         schedule_entry__task__plan__user=request.user,
+        schedule_entry__task__status__in=[Task.STATUS_NOT_STARTED, Task.STATUS_IN_PROGRESS],
         schedule_entry__scheduled_date__gte=week_start,
         schedule_entry__scheduled_date__lte=week_end,
     )
@@ -551,6 +557,8 @@ def summary_weekly(request: HttpRequest):
         progress_percent = int(round((completed / total) * 100)) if total else 0
         plans_progress.append({"plan": _serialize_plan(plan), "progress_percent": progress_percent})
         for task in plan_tasks:
+            if task.status == Task.STATUS_COMPLETED:
+                continue
             actual = ProgressLog.objects.filter(schedule_entry__task=task).aggregate(total=Sum("actual_effort_hours"))["total"] or 0
             remaining_workload_hours += max(float(task.estimated_effort_hours) - float(actual), 0)
 
