@@ -1,6 +1,9 @@
 import json
+from datetime import date, timedelta
 
 from django.test import Client, TestCase
+
+from .models import ScheduleEntry
 
 
 class AuthApiTests(TestCase):
@@ -299,3 +302,30 @@ class ScheduleAndProgressApiTests(TestCase):
         )
         forbidden_response = other_client.get(f"/api/schedule-entries/{entry_id}/")
         self.assertEqual(forbidden_response.status_code, 404)
+
+    def test_task_auto_reschedule_moves_unfinished_today_entry_once(self):
+        today = date.today()
+
+        ScheduleEntry.objects.filter(task_id=self.task_id).delete()
+        source_entry = ScheduleEntry.objects.create(
+            task_id=self.task_id,
+            scheduled_date=today,
+            planned_effort_hours=2,
+            is_rescheduled=False,
+        )
+
+        first_response = self.client.post(f"/api/tasks/{self.task_id}/auto-reschedule/")
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(first_response.json()["created_count"], 1)
+
+        source_entry.refresh_from_db()
+        self.assertTrue(source_entry.is_rescheduled)
+
+        created_entry = ScheduleEntry.objects.exclude(id=source_entry.id).get(task_id=self.task_id)
+        self.assertEqual(created_entry.scheduled_date, today + timedelta(days=1))
+        self.assertEqual(created_entry.planned_effort_hours, 2)
+        self.assertTrue(created_entry.is_rescheduled)
+
+        second_response = self.client.post(f"/api/tasks/{self.task_id}/auto-reschedule/")
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(second_response.json()["created_count"], 0)

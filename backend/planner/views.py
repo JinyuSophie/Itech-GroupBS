@@ -133,9 +133,9 @@ def _reschedule_task_unfinished(task: Task):
 
     today = date.today()
     created = []
-    past_entries = ScheduleEntry.objects.filter(task=task, scheduled_date__lt=today).order_by("scheduled_date", "id")
+    unfinished_entries = ScheduleEntry.objects.filter(task=task, scheduled_date__lte=today, is_rescheduled=False).order_by("scheduled_date", "id")
 
-    for entry in past_entries:
+    for entry in unfinished_entries:
         progress = ProgressLog.objects.filter(schedule_entry=entry).aggregate(total=Sum("actual_effort_hours"), completed=Sum("completed_flag"))
         actual = float(progress["total"] or 0)
         completed_any = bool(progress["completed"])
@@ -143,7 +143,9 @@ def _reschedule_task_unfinished(task: Task):
         if remaining <= 0 or completed_any:
             continue
 
-        target_day = _next_available_date(task, max(today, entry.scheduled_date + timedelta(days=1)))
+        target_day = _next_available_date(task, max(today + timedelta(days=1), entry.scheduled_date + timedelta(days=1)))
+        entry.is_rescheduled = True
+        entry.save(update_fields=["is_rescheduled"])
         created.append(
             ScheduleEntry.objects.create(
                 task=task,
